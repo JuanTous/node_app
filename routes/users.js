@@ -9,18 +9,15 @@ router.use(bodyParser.json());
 
 /* GET users listing. */
 router.route('/')
-.get(authenticate.verifyUser, (req, res, next) => {
-  if (req.user.admin) {
+.get(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
+
     User.find({})
     .then(users => {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
       res.json(users);
     })
-  } else {
-    res.statusCode = 401;
-    res.end("Your role does not allow you to perform this operation")
-  }
+
 });
 
 router.post('/signup', (req, res, next) => {
