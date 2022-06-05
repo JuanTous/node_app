@@ -21,27 +21,37 @@ dishRouter.route('/')
     .catch((err) => next(err));
 })
 .post(authenticate.verifyUser, (req, res, next) => {
-    Dishes.create(req.body)
-    .then((dish) => {
-        console.log('Dish Created ', dish);
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.json(dish);
-    }, (err) => next(err))
-    .catch((err) => next(err));
+    if(req.user.admin) {
+        Dishes.create(req.body)
+        .then((dish) => {
+            console.log('Dish Created ', dish);
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json(dish);
+        }, (err) => next(err))
+        .catch((err) => next(err));
+    } else {
+        res.statusCode = 401;
+        res.end("Your role does not allow you to perform this operation")
+    }
 })
 .put(authenticate.verifyUser, (req, res, next) => {
     res.statusCode = 403;
     res.end('PUT operation not supported on /dishes');
 })
 .delete(authenticate.verifyUser, (req, res, next) => {
-    Dishes.remove({})
-    .then((resp) => {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.json(resp);
-    }, (err) => next(err))
-    .catch((err) => next(err));    
+    if(req.user.admin) {
+        Dishes.remove({})
+        .then((resp) => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json(resp);
+        }, (err) => next(err))
+        .catch((err) => next(err));  
+    } else {
+        res.statusCode = 401;
+        res.end("Your role does not allow you to perform this operation")
+    }  
 });
 
 dishRouter.route('/:dishId')
@@ -60,24 +70,34 @@ dishRouter.route('/:dishId')
     res.end('POST operation not supported on /dishes/'+ req.params.dishId);
 })
 .put(authenticate.verifyUser, (req, res, next) => {
-    Dishes.findByIdAndUpdate(req.params.dishId, {
-        $set: req.body
-    }, { new: true })
-    .then((dish) => {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.json(dish);
-    }, (err) => next(err))
-    .catch((err) => next(err));
+    if (req.user.admin) {
+        Dishes.findByIdAndUpdate(req.params.dishId, {
+            $set: req.body
+        }, { new: true })
+        .then((dish) => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json(dish);
+        }, (err) => next(err))
+        .catch((err) => next(err));
+    } else {
+        res.statusCode = 401;
+        res.end("Your role does not allow you to perform this operation")
+    }
 })
 .delete(authenticate.verifyUser, (req, res, next) => {
-    Dishes.findByIdAndRemove(req.params.dishId)
-    .then((resp) => {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.json(resp);
-    }, (err) => next(err))
-    .catch((err) => next(err));
+    if(req.user.admin){
+        Dishes.findByIdAndRemove(req.params.dishId)
+        .then((resp) => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.json(resp);
+        }, (err) => next(err))
+        .catch((err) => next(err));
+    } else {
+        res.statusCode = 401;
+        res.end("Your role does not allow you to perform this operation")
+    }
 });
 
 dishRouter.route('/:dishId/comments')
@@ -184,22 +204,28 @@ dishRouter.route('/:dishId/comments/:commentId')
     Dishes.findById(req.params.dishId)
     .then((dish) => {
         if (dish != null && dish.comments.id(req.params.commentId) != null) {
-            if (req.body.rating) {
-                dish.comments.id(req.params.commentId).rating = req.body.rating;
-            }
-            if (req.body.comment) {
-                dish.comments.id(req.params.commentId).comment = req.body.comment;                
-            }
-            dish.save()
-            .then((dish) => {
-                Dishes.findById(dish._id)
-                .populate('comments.author')
+            if (dish.comments.id(req.params.commentId).author.toHexString() == req.user.id) {
+                if (req.body.rating) {
+                    dish.comments.id(req.params.commentId).rating = req.body.rating;
+                }
+                if (req.body.comment) {
+                    dish.comments.id(req.params.commentId).comment = req.body.comment;                
+                }
+    
+                dish.save()
                 .then((dish) => {
-                    res.statusCode = 200;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.json(dish);  
-                })              
-            }, (err) => next(err));
+                    Dishes.findById(dish._id)
+                    .populate('comments.author')
+                    .then((dish) => {
+                        res.statusCode = 200;
+                        res.setHeader('Content-Type', 'application/json');
+                        res.json(dish);  
+                    })              
+                }, (err) => next(err));
+            } else {
+                res.statusCode = 401;
+                res.end("You cannot edit a comment that is not your own")
+            }
         }
         else if (dish == null) {
             err = new Error('Dish ' + req.params.dishId + ' not found');
@@ -218,18 +244,22 @@ dishRouter.route('/:dishId/comments/:commentId')
     Dishes.findById(req.params.dishId)
     .then((dish) => {
         if (dish != null && dish.comments.id(req.params.commentId) != null) {
-
-            dish.comments.id(req.params.commentId).remove();
-            dish.save()
-            .then((dish) => {
-                Dishes.findById(dish._id)
-                .populate('comments.author')
+            if (dish.comments.id(req.params.commentId).author.toHexString() == req.user.id) {
+                dish.comments.id(req.params.commentId).remove();
+                dish.save()
                 .then((dish) => {
-                    res.statusCode = 200;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.json(dish);  
-                })               
-            }, (err) => next(err));
+                    Dishes.findById(dish._id)
+                    .populate('comments.author')
+                    .then((dish) => {
+                        res.statusCode = 200;
+                        res.setHeader('Content-Type', 'application/json');
+                        res.json(dish);  
+                    })               
+                }, (err) => next(err));
+            } else {
+                res.statusCode = 401;
+                res.end("You cannot delete a comment that is not your own")
+            }
         }
         else if (dish == null) {
             err = new Error('Dish ' + req.params.dishId + ' not found');

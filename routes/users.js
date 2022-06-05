@@ -8,8 +8,19 @@ var authenticate = require('../authenticate');
 router.use(bodyParser.json());
 
 /* GET users listing. */
-router.get('/', (req, res, next) => {
-  res.send('respond with a resource');
+router.route('/')
+.get(authenticate.verifyUser, (req, res, next) => {
+  if (req.user.admin) {
+    User.find({})
+    .then(users => {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.json(users);
+    })
+  } else {
+    res.statusCode = 401;
+    res.end("Your role does not allow you to perform this operation")
+  }
 });
 
 router.post('/signup', (req, res, next) => {
