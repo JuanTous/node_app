@@ -13,6 +13,8 @@ var session = require('express-session');
 var FileStore = require('session-file-store')(session);
 var passport = require('passport');
 var config = require('./config');
+const uploadRouter = require('./routes/uploadRouter');
+const imagesRouter = require('./routes/imagesRouter');
 
 const app = express();
 
@@ -48,13 +50,14 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
-
 app.use(cookieParser('12345-67890-09876-54321'));
 app.use(morgan('dev'));
 app.use(express.static(__dirname + '/public'));
 app.use('/dishes', dishRouter);
 app.use('/promotions', promoRouter);
 app.use('/leaders', leaderRouter);
+app.use('/imageUpload',uploadRouter);
+app.use('/images',imagesRouter);
 app.use(bodyParser.json());
 
 const server = http.createServer(app);
