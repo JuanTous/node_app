@@ -58,9 +58,6 @@ app.use('/promotions', promoRouter);
 app.use('/leaders', leaderRouter);
 app.use('/imageUpload',uploadRouter);
 app.use('/favorites',favoriteRouter);
-app.use('/privacy', (req, res) => {
-  res.sendFile(__dirname + '/views/privacy.html');
-});
 app.use(bodyParser.json());
 
 const server = http.createServer(app);
